@@ -20,6 +20,7 @@
  *	Version: 1.2 - Added error tracking, and better icons, link state
  *	Version: 1.3 - Better error tracking, error correction and the ability to change the default port (thx to sidhartha100), fix a bug that prevented auto population of deviceNetworkId
  *	Version: 1.4 - Added bin status and code clean up
+ * 	Version: 1.5 - Fixed issue with status tile not updating correctly.
  *
  */
 import groovy.json.JsonSlurper
