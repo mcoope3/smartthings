@@ -51,6 +51,16 @@ metadata {
 				[value: 96, color: "#79b821"]
 			])
 		}
+        valueTile("battery_condition", "device.condition", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
+			state ("default", label:'Condition: ${currentValue}%', unit:"percent", backgroundColors: [
+				[value: 20, color: "#bc2323"],
+				[value: 50, color: "#ffff00"],
+				[value: 96, color: "#79b821"]
+			])
+		}
+        standardTile("Firmware", "device.Firmware", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
+			state("default", label:'${currentValue}', icon: "st.Appliances.appliances13",backgroundColor: "#79b821")
+		}
 		standardTile("beep", "device.beep", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false, decoration: "flat") {
 			state "beep", label:'beep', action:"tone.beep", icon:"st.quirky.spotter.quirky-spotter-sound-on", backgroundColor:"#ffffff"
 		}
@@ -79,14 +89,16 @@ metadata {
 		standardTile("status", "device.status", width: 1, height: 1, inactiveLabel: false, canChangeIcon: false) {
 			state ("default", label:'unknown', icon: "st.unknown.unknown.unknown")
 			state ("charging", label:'${currentValue}', icon: "st.Appliances.appliances13", backgroundColor: "#E5E500")
+            		state ("stopped", label:'${currentValue}', icon: "st.Appliances.appliances13", backgroundColor: "#E5E500")
 			state ("cleaning", label:'${currentValue}', icon: "st.Appliances.appliances13", backgroundColor: "#79b821")
 			state ("docked", label:'${currentValue}', icon: "st.quirky.spotter.quirky-spotter-plugged", backgroundColor: "#79b821")
 			state ("docking", label:'${currentValue}', icon: "st.Appliances.appliances13", backgroundColor: "#E5E500")
 			state ("error", label:'${currentValue}', icon: "st.Appliances.appliances13", backgroundColor: "#bc2323")
-			state ("waiting", label:'${currentValue}', icon: "st.Appliances.appliances13")
+			state ("Idle", label:'${currentValue}', icon: "st.Appliances.appliances13")
 		}
+           
 		main("clean")
-			details(["clean","spot","dock","battery","status","bin","network","beep","refresh"])
+			details(["clean","spot","dock","battery","battery_condition","status","bin","network","Firmware","beep","refresh"])
 		}
 }
 
@@ -111,6 +123,15 @@ def parse(String description) {
 			case "full_status":
 				sendEvent(name: 'network', value: "Connected" as String)
 				sendEvent(name: 'battery', value: result.power_status.battery_charge as Integer)
+                sendEvent(name: 'condition', value: result.power_status.battery_condition as Integer)
+                sendEvent(name: 'Firmware', value: result.firmware.version as String)
+                log.debug "Name: " +  result.tc_status.name
+                log.debug "Battery Status: " +  result.power_status.battery_charge
+                log.debug "Battery Condition: " + result.power_status.battery_condition
+                log.debug "Firmware Version: " +  result.firmware.version
+                log.debug "WIFI Version: " +  result.firmware.wifi_version
+ 
+                
 			switch (result.tc_status.bin_status) {
 				case "0":
 					sendEvent(name: 'bin', value: "empty" as String)
@@ -140,8 +161,12 @@ def parse(String description) {
 					sendEvent(name: 'status', value: "docked" as String)
 					sendEvent(name: 'switch', value: "off" as String)
 				break;
+                case "st_wait":
+					sendEvent(name: 'status', value: "Idle" as String)
+					sendEvent(name: 'switch', value: "off" as String)
+				break;
 				case "st_clean":
-					if (result.power_status.cleaning == "1"){
+					if (result.tc_status.cleaning == 1){
 						sendEvent(name: 'status', value: "cleaning" as String)
 						sendEvent(name: 'switch', value: "on" as String)
 					}
@@ -152,29 +177,30 @@ def parse(String description) {
 					}
 				break;
 				case "st_clean_spot":
-					if (result.power_status.cleaning == "1"){
+					if (result.tc_status.cleaning == 1){
 						sendEvent(name: 'status', value: "cleaning" as String)
 						sendEvent(name: 'switch', value: "on" as String)
 					}
 					else {
 						sendEvent(name: 'status', value: "error" as String)
 						sendEvent(name: 'switch', value: "on" as String)
-						log.debug result.power_status.cleaner_state
+                        log.debug result.power_status.cleaner_state
 					}
 				break;
 				case "st_clean_max":
-					if (result.power_status.cleaning == "1"){
-						sendEvent(name: 'status', value: "cleaning" as String)
+					if(result.tc_status.cleaning == 1){
+                        sendEvent(name: 'status', value: "cleaning" as String)
 						sendEvent(name: 'switch', value: "on" as String)
+                        
 					}
 					else {
 						sendEvent(name: 'status', value: "error" as String)
 						sendEvent(name: 'switch', value: "on" as String)
-						log.debug result.power_status.cleaner_state
+                        log.debug result.power_status.cleaner_state
 					}
 				break;
 				case "st_dock":
-					if (result.power_status.cleaning == "1"){
+					if (result.tc_status.cleaning == 1){
 						sendEvent(name: 'status', value: "docking" as String)
 						sendEvent(name: 'switch', value: "on" as String)
 					}
@@ -187,15 +213,19 @@ def parse(String description) {
 					sendEvent(name: 'switch', value: "off" as String)
 					sendEvent(name: 'status', value: "error" as String)
 				break;
+                case "st_stopped":
+					sendEvent(name: 'switch', value: "off" as String)
+					sendEvent(name: 'status', value: "stopped" as String)
+				break;
 				default:
-					sendEvent(name: 'status', value: "error" as String)
+					sendEvent(name: 'status', value: "default" as String)
 				break;
 			}
 			break;
 		}
 	}
 	else {
-		sendEvent(name: 'status', value: "error" as String)
+		sendEvent(name: 'network', value: "Not Connected" as String)
 		log.debug headerString
 	}
 	parse
@@ -205,11 +235,13 @@ def parse(String description) {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
+    ipSetup()
 	initialize()
 }
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
+    ipSetup()
 	initialize()
 }
 
@@ -220,7 +252,7 @@ def initialize() {
 
 def on() {
 	log.debug "Executing 'on'"
-	ipSetup()
+	//ipSetup()
 	api('on')
 }
 
@@ -231,7 +263,7 @@ def off() {
 
 def spot() {
 	log.debug "Executing 'spot'"
-	ipSetup()
+	//ipSetup()
 	api('spot')
 }
 
@@ -242,25 +274,25 @@ def poll() {
 
 def refresh() {
 	log.debug "Executing 'refresh'"
-	ipSetup()
+	//ipSetup()
 	api('refresh')
 }
 
 def beep() {
 	log.debug "Executing 'beep'"
-	ipSetup()
+	//ipSetup()
 	api('beep')
 }
-
 def api(String rooCommand, success = {}) {
 	def rooPath
 	def hubAction
+
     if (device.currentValue('network') == "unknown"){
     	sendEvent(name: 'network', value: "Not Connected" as String)
         log.debug "Network is not connected"
     }
     else {
-		sendEvent(name: 'network', value: "unknown" as String, displayed:false)
+		sendEvent(name: 'network', value: "Connected" as String, displayed:false)
     }
 	switch (rooCommand) {
 		case "on":
@@ -287,7 +319,27 @@ def api(String rooCommand, success = {}) {
     
 	switch (rooCommand) {
 		case "refresh":
+        	try {
+				hubAction = new physicalgraph.device.HubAction(
+				method: "GET",
+				path: rooPath,
+				headers: [HOST: "${settings.ip}:${settings.port}", Accept: "application/json"])
+			}
+            catch (Exception e) {
+				log.debug "Hit Exception $e on $hubAction"
+			}
 		case "beep":
+			try {
+				hubAction = new physicalgraph.device.HubAction(
+				method: "GET",
+				path: rooPath,
+				headers: [HOST: "${settings.ip}:${settings.port}", Accept: "application/json"])
+			}
+			catch (Exception e) {
+				log.debug "Hit Exception $e on $hubAction"
+			}
+			break;
+        case "forward":
 			try {
 				hubAction = new physicalgraph.device.HubAction(
 				method: "GET",
