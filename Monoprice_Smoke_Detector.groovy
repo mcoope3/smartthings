@@ -38,13 +38,13 @@ metadata {
 		standardTile("smoke", "device.smoke", width: 2, height: 2) {
 			state("clear", label:"clear", icon:"st.alarm.smoke.clear", backgroundColor:"#ffffff")
 			state("smoke", label:"SMOKE", icon:"st.alarm.smoke.smoke", backgroundColor:"#e86d13")	
-            		state("tamper", label:"TAMPER", icon:"st.alarm.smoke.test", backgroundColor:"#e86d13")
-            		state("batt", label:"BAT_LOW", icon:"st.alarm.smoke.test", backgroundColor:"#e86d13")
-            		state("unkown", label:"UNKOWN", icon:"st.unknown.zwave.device")
+            state("tamper", label:"TAMPER", icon:"st.alarm.smoke.test", backgroundColor:"#e86d13")
+            state("batt", label:"BAT_LOW", icon:"st.alarm.smoke.test", backgroundColor:"#e86d13")
+            state("unkown", label:"UNKOWN", icon:"st.unknown.zwave.device")
 		}
-		standardTile("refresh", "command.refresh", inactiveLabel: false, decoration: "flat") {
-            		state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
-        	}
+        standardTile("refresh", "command.refresh", inactiveLabel: false, decoration: "flat") {
+            state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
+        }
 		valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat") {
 			state "battery", label:'${currentValue}% battery', unit:""
 		}
@@ -57,7 +57,7 @@ metadata {
 def parse(String description) {
     def result = null 
     
-    def cmd = zwave.parse(description, [ 0x30: 1, 0x71: 1, 0x85: 2, 0x72: 1, 0x84: 2, 0x86: 1] )
+    def cmd = zwave.parse(description, [ 0x71: 1, 0x85: 2, 0x72: 1, 0x84: 2, 0x86: 1] )
     if (cmd) {
         result = zwaveEvent(cmd)
     } else {
@@ -171,7 +171,7 @@ def zwaveEvent(physicalgraph.zwave.Command cmd, results) {
 
 private getUserWakeUp(userWake) {
 
-    if (!userWake) { userWake =     '3600' }  // set default 1 hr if no user preference 
+    if (!userWake)                       { userWake =     '3600' }  // set default 1 hr if no user preference 
 
     // make sure user setting is within valid range for device 
     if (userWake.toInteger() <       60) { userWake =       '600' }  // 10 minutes
