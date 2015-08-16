@@ -11,7 +11,7 @@
 
 preferences {
     // manufacturer default wake up is every hour; optionally increase for better battery life
-    input "userWakeUpInterval", "number", title: "Wake Up Interval (seconds)", description: "Default 3600 sec (60 sec - 194 days)", defaultValue: '3600', required: false, displayDuringSetup: true
+    input "userWakeUpInterval", "number", title: "Wake Up Interval (seconds)", description: "Default 3600 sec (10 mins - 7 days)", defaultValue: '3600', required: false, displayDuringSetup: true
 }
 
 metadata {
